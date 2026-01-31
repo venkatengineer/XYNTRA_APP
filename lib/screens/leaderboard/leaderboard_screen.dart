@@ -16,17 +16,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   List<Map<String, dynamic>> leaderboard = [];
 
-  String selectedCategory = "Overall";
-
-  final List<String> categories = [
-    "Overall",
-    "Communication",
-    "Scalability",
-    "UI / UX",
-    "Innovation",
-    "Technical Implementation",
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -36,19 +25,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Future<void> fetchLeaderboard() async {
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.29.72:8000/all-marks"),
+        Uri.parse("http://192.168.29.72:8000/leaderboard"),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        final List<Map<String, dynamic>> submissions =
-            List<Map<String, dynamic>>.from(data["submissions"]);
-
-        leaderboard = submissions;
-        sortLeaderboard();
-
         setState(() {
+          leaderboard = List<Map<String, dynamic>>.from(data);
           isLoading = false;
         });
       } else {
@@ -56,21 +40,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       }
     } catch (e) {
       setState(() => isLoading = false);
-    }
-  }
-
-  /// 🔥 SORT LOGIC
-  void sortLeaderboard() {
-    if (selectedCategory == "Overall") {
-      leaderboard.sort(
-        (a, b) => b["total_score"].compareTo(a["total_score"]),
-      );
-    } else {
-      leaderboard.sort((a, b) {
-        final aScore = a["scores"]?[selectedCategory] ?? 0;
-        final bScore = b["scores"]?[selectedCategory] ?? 0;
-        return bScore.compareTo(aScore);
-      });
     }
   }
 
@@ -91,73 +60,22 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           : leaderboard.isEmpty
               ? const Center(
                   child: Text(
-                    "No submissions yet",
+                    "No results yet",
                     style: TextStyle(color: Colors.white54),
                   ),
                 )
-              : Column(
-                  children: [
-                    /// 🔽 SORT DROPDOWN
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: DropdownButtonFormField<String>(
-                        value: selectedCategory,
-                        dropdownColor: Colors.black,
-                        iconEnabledColor: gold,
-                        decoration: InputDecoration(
-                          labelText: "Sort by",
-                          labelStyle:
-                              const TextStyle(color: Colors.white70),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: gold),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: gold, width: 2),
-                          ),
-                        ),
-                        items: categories.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Text(
-                              category,
-                              style:
-                                  const TextStyle(color: Colors.white),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedCategory = value!;
-                            sortLeaderboard();
-                          });
-                        },
-                      ),
-                    ),
-
-                    /// 🏆 LEADERBOARD LIST
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: leaderboard.length,
-                        itemBuilder: (context, index) {
-                          final team = leaderboard[index];
-
-                          final displayScore =
-                              selectedCategory == "Overall"
-                                  ? team["total_score"]
-                                  : team["scores"]?[selectedCategory] ?? 0;
-
-                          return _leaderboardCard(
-                            rank: index + 1,
-                            teamId: team["team_id"],
-                            score: displayScore,
-                            label: selectedCategory,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: leaderboard.length,
+                  itemBuilder: (context, index) {
+                    final team = leaderboard[index];
+                    return _leaderboardCard(
+                      rank: index + 1,
+                      teamId: team["team_id"],
+                      avgScore: team["average_score"],
+                      judgesCount: team["judges_count"],
+                    );
+                  },
                 ),
     );
   }
@@ -165,8 +83,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Widget _leaderboardCard({
     required int rank,
     required String teamId,
-    required num score,
-    required String label,
+    required num avgScore,
+    required int judgesCount,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -220,7 +138,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  label == "Overall" ? "Total Score" : label,
+                  "Judged by $judgesCount judges",
                   style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 12,
@@ -231,13 +149,26 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           ),
 
           /// SCORE
-          Text(
-            score.toString(),
-            style: TextStyle(
-              color: gold,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                avgScore.toString(),
+                style: TextStyle(
+                  color: gold,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Text(
+                "AVG",
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 10,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
           ),
         ],
       ),

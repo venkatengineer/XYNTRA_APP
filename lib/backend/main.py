@@ -183,3 +183,9 @@ def leaderboard():
     )
 
     return leaderboard
+
+
+@app.get("/admin/marks")
+def admin_marks():
+    return MARKS_DB
+
