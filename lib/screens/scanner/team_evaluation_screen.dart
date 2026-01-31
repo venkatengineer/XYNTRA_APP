@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../../utils/judge_session.dart';
+
 class TeamEvaluationScreen extends StatefulWidget {
   final String teamId;
 
@@ -25,25 +27,46 @@ class _TeamEvaluationScreenState extends State<TeamEvaluationScreen> {
   bool isSubmitting = false;
 
   Future<void> submitMarks() async {
+    if (JudgeSession.judgeId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Judge not logged in")),
+      );
+      return;
+    }
+
     setState(() => isSubmitting = true);
 
-    await http.post(
-      Uri.parse("http://192.168.29.72:8000/submit-marks"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "team_id": widget.teamId,
-        "scores": scores,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse("http://192.168.29.72:8000/submit-marks"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "team_id": widget.teamId,
+          "judge_id": JudgeSession.judgeId,
+          "scores": scores,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Marks submitted successfully")),
+        );
+      } else {
+        showError("Failed to submit marks");
+      }
+    } catch (e) {
+      showError("Backend connection failed");
+    }
 
     setState(() => isSubmitting = false);
+  }
 
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Marks submitted successfully")),
-      );
-    }
+  void showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   @override

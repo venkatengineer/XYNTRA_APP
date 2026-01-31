@@ -8,28 +8,38 @@ app = FastAPI(
 )
 
 # -------------------------------------------------
-# MOCK DATABASE (REPLACE WITH REAL DB LATER)
+# MOCK DATABASES
 # -------------------------------------------------
+
+JUDGES_DB = {
+    "judge1": {
+        "judge_id": "JUDGE_01",
+        "name": "summa",
+        "password": "1234"
+    },
+    "judge2": {
+        "judge_id": "JUDGE_02",
+        "name": "Ms. Ananya",
+        "password": "5678"
+    }
+}
 
 TEAMS_DB = {
     "TEAM_XYNTRA_01": {
         "team_id": "TEAM_XYNTRA_01",
         "team_name": "Xyntra",
         "team_leader": "Venkat",
+        "team_members": [
+            "Venkat",
+            "Arjun",
+            "Sathish"
+        ],
         "problem_statement": "Smart hackathon judging system",
-        "logo_url": "https://www.bing.com/ck/a?!&&p=59330900cddb0b90dd572523fd0c612480d617d4370e2812e59b39858dd81228JmltdHM9MTc2OTgxNzYwMA&ptn=3&ver=2&hsh=4&fclid=2e34782e-5890-611e-08f3-6e8259ef6081&u=a1L2ltYWdlcy9zZWFyY2g_cT1jb2RpbmcrbG9nbyZpZD0zMTZCRkJBQzQ3QUZBRDQwQTdDMjczRDMzOEM1QTYwNzdDNDM3N0M4JkZPUk09SVFGUkJB"
-    },
-    "TEAM_ALPHA_02": {
-        "team_id": "TEAM_ALPHA_02",
-        "team_name": "Alpha Coders",
-        "team_leader": "Rahul",
-        "problem_statement": "AI based waste management",
         "logo_url": "https://via.placeholder.com/150"
     }
 }
 
 MARKS_DB = []
-
 
 # -------------------------------------------------
 # MODELS
@@ -39,9 +49,15 @@ class QRScanRequest(BaseModel):
     team_id: str
 
 
+class JudgeLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 class SubmitMarksRequest(BaseModel):
     team_id: str
-    scores: dict   # { "Communication": 8, "UI/UX": 9, ... }
+    judge_id: str
+    scores: dict   # { "Communication": 8, "UI / UX": 9, ... }
 
 
 # -------------------------------------------------
@@ -74,23 +90,37 @@ def get_team_details(payload: QRScanRequest):
 
 
 # -------------------------------------------------
-# 2️⃣ SUBMIT MARKS
+# 2️⃣ JUDGE LOGIN
+# -------------------------------------------------
+
+@app.post("/judge-login")
+def judge_login(payload: JudgeLoginRequest):
+    judge = JUDGES_DB.get(payload.username)
+
+    if not judge or judge["password"] != payload.password:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    return {
+        "success": True,
+        "judge_id": judge["judge_id"],
+        "judge_name": judge["name"]
+    }
+
+
+# -------------------------------------------------
+# 3️⃣ SUBMIT MARKS (PER JUDGE)
 # -------------------------------------------------
 
 @app.post("/submit-marks")
 def submit_marks(payload: SubmitMarksRequest):
-    team_id = payload.team_id
-    scores = payload.scores
-
-    if team_id not in TEAMS_DB:
+    if payload.team_id not in TEAMS_DB:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    total_score = sum(scores.values())
-
     record = {
-        "team_id": team_id,
-        "scores": scores,
-        "total_score": total_score,
+        "team_id": payload.team_id,
+        "judge_id": payload.judge_id,
+        "scores": payload.scores,
+        "total_score": sum(payload.scores.values()),
         "submitted_at": datetime.utcnow()
     }
 
@@ -104,7 +134,7 @@ def submit_marks(payload: SubmitMarksRequest):
 
 
 # -------------------------------------------------
-# 3️⃣ (OPTIONAL) VIEW ALL SUBMISSIONS (ADMIN)
+# 4️⃣ VIEW ALL RAW SUBMISSIONS (ADMIN)
 # -------------------------------------------------
 
 @app.get("/all-marks")
@@ -115,9 +145,41 @@ def get_all_marks():
     }
 
 
+# -------------------------------------------------
+# 5️⃣ VIEW ALL TEAMS
+# -------------------------------------------------
+
 @app.get("/all-teams")
 def get_all_teams():
     return {
         "count": len(TEAMS_DB),
         "teams": list(TEAMS_DB.values())
     }
+
+
+# -------------------------------------------------
+# 6️⃣ AGGREGATED LEADERBOARD (MULTI-JUDGE)
+# -------------------------------------------------
+
+@app.get("/leaderboard")
+def leaderboard():
+    team_scores = {}
+
+    for record in MARKS_DB:
+        team_id = record["team_id"]
+        team_scores.setdefault(team_id, []).append(record["total_score"])
+
+    leaderboard = []
+
+    for team_id, scores in team_scores.items():
+        leaderboard.append({
+            "team_id": team_id,
+            "average_score": round(sum(scores) / len(scores), 2),
+            "judges_count": len(scores)
+        })
+
+    leaderboard.sort(
+        key=lambda x: x["average_score"], reverse=True
+    )
+
+    return leaderboard

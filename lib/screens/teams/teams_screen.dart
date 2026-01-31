@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'team_details_screen.dart';
+
 class TeamsScreen extends StatefulWidget {
   const TeamsScreen({super.key});
 
@@ -73,66 +75,89 @@ class _TeamsScreenState extends State<TeamsScreen> {
     );
   }
 
+  /// 🔥 TEAM CARD (TAP → DETAILS)
   Widget _teamCard(Map<String, dynamic> team) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: gold, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: gold.withOpacity(0.25),
-            blurRadius: 16,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: gold,
-            child: CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.black,
-              backgroundImage: NetworkImage(team["logo_url"]),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TeamDetailsScreen(
+              teamData: team,
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  team["team_name"],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "Leader: ${team["team_leader"]}",
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  team["team_id"],
-                  style: TextStyle(
-                    color: gold,
-                    fontSize: 12,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-              ],
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: gold, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: gold.withOpacity(0.25),
+              blurRadius: 16,
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          children: [
+            /// TEAM LOGO
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: gold,
+              child: CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.black,
+                backgroundImage: NetworkImage(team["logo_url"]),
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            /// TEAM INFO
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    team["team_name"],
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Leader: ${team["team_leader"]}",
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    team["team_id"],
+                    style: TextStyle(
+                      color: gold,
+                      fontSize: 12,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            /// ARROW ICON (UX CLUE)
+            const Icon(
+              Icons.chevron_right,
+              color: Colors.white54,
+            ),
+          ],
+        ),
       ),
     );
   }

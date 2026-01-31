@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'widgets/bottom_nav.dart';
+import 'screens/auth/judge_login_screen.dart';
+import 'utils/judge_session.dart';
 
 void main() {
   runApp(const XyntraApp());
@@ -16,10 +18,8 @@ class XyntraApp extends StatelessWidget {
 
       theme: ThemeData(
         brightness: Brightness.dark,
-
         scaffoldBackgroundColor: Colors.black,
-
-        primaryColor: const Color(0xFFFFC107), // Gold
+        primaryColor: const Color(0xFFFFC107),
 
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.black,
@@ -32,22 +32,11 @@ class XyntraApp extends StatelessWidget {
           selectedItemColor: Color(0xFFFFC107),
           unselectedItemColor: Colors.grey,
         ),
-
-        iconTheme: const IconThemeData(
-          color: Color(0xFFFFC107),
-        ),
-
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Colors.white),
-          bodyLarge: TextStyle(color: Colors.white),
-          titleLarge: TextStyle(
-            color: Color(0xFFFFC107),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
       ),
 
-      home: const BottomNav(),
+      home: JudgeSession.isLoggedIn
+          ? const BottomNav()
+          : const JudgeLoginScreen(),
     );
   }
 }

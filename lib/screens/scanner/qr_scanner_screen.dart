@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'team_details_screen.dart';
 import 'package:http/http.dart' as http;
-import '../../utils/internet_checker.dart';
+
+import 'team_details_screen.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -53,52 +53,43 @@ class _QrScannerScreenState extends State<QrScannerScreen>
   }
 
   /// HANDLE QR SCAN
-  
-  void _onQrScanned(String teamId) async {
-  if (_hasScanned) return;
-  _hasScanned = true;
+  Future<void> _onQrScanned(String teamId) async {
+    if (_hasScanned) return;
+    _hasScanned = true;
 
-  final hasNet = await InternetChecker.hasInternet(context);
-  if (!hasNet) {
-    _hasScanned = false;
-    return;
-  }
+    try {
+      final response = await http.post(
+        Uri.parse("http://192.168.29.72:8000/get-team-details"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"team_id": teamId}),
+      );
 
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
 
-  try {
-    final response = await http.post(
-      Uri.parse("http://192.168.29.72:8000/get-team-details"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"team_id": teamId}),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => TeamDetailsScreen(
-            teamData: data["team"],
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TeamDetailsScreen(
+              teamData: data["team"],
+            ),
           ),
-        ),
-      ).then((_) {
+        ).then((_) {
+          _hasScanned = false;
+        });
+      } else {
         _hasScanned = false;
-      });
-    } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Team not found")),
+        );
+      }
+    } catch (e) {
       _hasScanned = false;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Team not found")),
+        const SnackBar(content: Text("Backend connection failed")),
       );
     }
-  } catch (e) {
-    _hasScanned = false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Backend connection failed")),
-    );
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +139,6 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: !_controller.isCompleted
-
                         ? const SizedBox()
                         : Stack(
                             children: [
@@ -179,8 +169,10 @@ class _CameraView extends StatelessWidget {
     return MobileScanner(
       fit: BoxFit.cover,
       onDetect: (capture) {
+        if (capture.barcodes.isEmpty) return;
+
         final code = capture.barcodes.first.rawValue;
-        if (code != null) {
+        if (code != null && code.isNotEmpty) {
           onScanned(code);
         }
       },

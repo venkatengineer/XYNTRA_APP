@@ -16,5 +16,5 @@ For help getting started with Flutter development, view the
 samples, guidance on mobile development, and a full API reference.
 
 git add .
-git commit -m "added the team screen and sorting feature in the leaderboard"
+git commit -m "added tjudge login"
 git push origin main
