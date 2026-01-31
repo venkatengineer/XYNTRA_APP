@@ -13,7 +13,19 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   static const Color gold = Color(0xFFD4AF37);
 
   bool isLoading = true;
+
   List<Map<String, dynamic>> leaderboard = [];
+
+  String selectedCategory = "Overall";
+
+  final List<String> categories = [
+    "Overall",
+    "Communication",
+    "Scalability",
+    "UI / UX",
+    "Innovation",
+    "Technical Implementation",
+  ];
 
   @override
   void initState() {
@@ -30,16 +42,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        List submissions =
+        final List<Map<String, dynamic>> submissions =
             List<Map<String, dynamic>>.from(data["submissions"]);
 
-        // Sort by total score (descending)
-        submissions.sort(
-          (a, b) => b["total_score"].compareTo(a["total_score"]),
-        );
+        leaderboard = submissions;
+        sortLeaderboard();
 
         setState(() {
-          leaderboard = submissions.cast<Map<String, dynamic>>();
           isLoading = false;
         });
       } else {
@@ -47,6 +56,21 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       }
     } catch (e) {
       setState(() => isLoading = false);
+    }
+  }
+
+  /// 🔥 SORT LOGIC
+  void sortLeaderboard() {
+    if (selectedCategory == "Overall") {
+      leaderboard.sort(
+        (a, b) => b["total_score"].compareTo(a["total_score"]),
+      );
+    } else {
+      leaderboard.sort((a, b) {
+        final aScore = a["scores"]?[selectedCategory] ?? 0;
+        final bScore = b["scores"]?[selectedCategory] ?? 0;
+        return bScore.compareTo(aScore);
+      });
     }
   }
 
@@ -71,17 +95,69 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                     style: TextStyle(color: Colors.white54),
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: leaderboard.length,
-                  itemBuilder: (context, index) {
-                    final team = leaderboard[index];
-                    return _leaderboardCard(
-                      rank: index + 1,
-                      teamId: team["team_id"],
-                      score: team["total_score"],
-                    );
-                  },
+              : Column(
+                  children: [
+                    /// 🔽 SORT DROPDOWN
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: DropdownButtonFormField<String>(
+                        value: selectedCategory,
+                        dropdownColor: Colors.black,
+                        iconEnabledColor: gold,
+                        decoration: InputDecoration(
+                          labelText: "Sort by",
+                          labelStyle:
+                              const TextStyle(color: Colors.white70),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: gold),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: gold, width: 2),
+                          ),
+                        ),
+                        items: categories.map((category) {
+                          return DropdownMenuItem(
+                            value: category,
+                            child: Text(
+                              category,
+                              style:
+                                  const TextStyle(color: Colors.white),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedCategory = value!;
+                            sortLeaderboard();
+                          });
+                        },
+                      ),
+                    ),
+
+                    /// 🏆 LEADERBOARD LIST
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: leaderboard.length,
+                        itemBuilder: (context, index) {
+                          final team = leaderboard[index];
+
+                          final displayScore =
+                              selectedCategory == "Overall"
+                                  ? team["total_score"]
+                                  : team["scores"]?[selectedCategory] ?? 0;
+
+                          return _leaderboardCard(
+                            rank: index + 1,
+                            teamId: team["team_id"],
+                            score: displayScore,
+                            label: selectedCategory,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
     );
   }
@@ -90,6 +166,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     required int rank,
     required String teamId,
     required num score,
+    required String label,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -142,9 +219,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  "Total Score",
-                  style: TextStyle(
+                Text(
+                  label == "Overall" ? "Total Score" : label,
+                  style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 12,
                   ),

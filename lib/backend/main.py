@@ -113,3 +113,11 @@ def get_all_marks():
         "count": len(MARKS_DB),
         "submissions": MARKS_DB
     }
+
+
+@app.get("/all-teams")
+def get_all_teams():
+    return {
+        "count": len(TEAMS_DB),
+        "teams": list(TEAMS_DB.values())
+    }
